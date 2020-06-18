@@ -1025,11 +1025,97 @@ void ConfigView::updateListAll(void)
 		v->list->updateListAll();
 }
 
+ConfigInfoWindow::ConfigInfoWindow(ConfigInfoView* parent, const char *name)
+        : Parent(parent)
+{
+        setObjectName(name);
+	setWindowTitle("Info Window");
+
+        QVBoxLayout* layout = new QVBoxLayout(this);
+        layout->setContentsMargins(11, 11, 11, 11);
+        split = new QSplitter(this);
+	split->setOrientation(Qt::Vertical);
+	list = new ConfigView(split, name);
+	list->list->mode = listMode;
+	info = new ConfigInfoView(split, name);
+	connect(list->list, SIGNAL(menuChanged(struct menu *)),
+		info, SLOT(setInfo(struct menu *)));
+        layout->addWidget(split);
+
+        if (name) {
+		QVariant x, y;
+		int width, height;
+		bool ok;
+
+                // Get top window (ConfigMainWindow)
+                QWidget *widget = (QWidget *)parent;
+                while (widget->parentWidget())
+                        widget = widget->parentWidget();
+
+		configSettings->beginGroup(name);
+		width = configSettings->value("/window width", widget->width() / 2).toInt();
+		height = configSettings->value("/window height", widget->height() / 2).toInt();
+		resize(width, height);
+		x = configSettings->value("/window x");
+		y = configSettings->value("/window y");
+		if ((x.isValid())&&(y.isValid()))
+			move(x.toInt(), y.toInt());
+		QList<int> sizes = configSettings->readSizes("/split", &ok);
+		if (ok)
+			split->setSizes(sizes);
+                else
+                        // Default size is list in minimum size
+                        // and info fills the rest
+                        split->setSizes({list->minimumHeight()+1, info->maximumHeight()});
+		configSettings->endGroup();
+		connect(configApp, SIGNAL(aboutToQuit()), SLOT(saveSettings()));
+	}
+}
+
+void ConfigInfoWindow::updateInfo(QString configName)
+{
+        struct symbol **result;
+	struct property *prop;
+	ConfigItem *lastItem = NULL;
+
+        setWindowTitle(configName);
+        list->list->clear();
+
+        result = sym_re_search("^" + configName.toLatin1() + "$");
+        if (!result)
+                return;
+	for (; *result; result++) {
+                for (prop = (*result)->prop; prop; prop = prop->next) {
+                        if(prop->type == P_SYMBOL)
+			        lastItem = new ConfigItem(list->list, lastItem,
+                                                  prop->menu,
+						  menu_is_visible(prop->menu));
+                }
+	}
+
+        list->list->topLevelItem(0)->setSelected(true);
+}
+
+void ConfigInfoWindow::saveSettings()
+{
+        if (!objectName().isEmpty()) {
+		configSettings->beginGroup(objectName());
+		configSettings->setValue("/window x", pos().x());
+		configSettings->setValue("/window y", pos().y());
+		configSettings->setValue("/window width", size().width());
+		configSettings->setValue("/window height", size().height());
+		configSettings->writeSizes("/split", split->sizes());
+		configSettings->endGroup();
+	}
+}
+
 ConfigInfoView::ConfigInfoView(QWidget* parent, const char *name)
-	: Parent(parent), sym(0), _menu(0)
+	: Parent(parent), sym(0), _menu(0), infoWindow(0)
 {
 	setObjectName(name);
 
+        setOpenLinks(false);
+        connect(this, SIGNAL(anchorClicked(const QUrl&)), SLOT(openLink(const QUrl&)));
 
 	if (!objectName().isEmpty()) {
 		configSettings->beginGroup(objectName());
@@ -1265,6 +1351,39 @@ QMenu* ConfigInfoView::createStandardContextMenu(const QPoint & pos)
 void ConfigInfoView::contextMenuEvent(QContextMenuEvent *e)
 {
 	Parent::contextMenuEvent(e);
+}
+
+void ConfigInfoView::openLink(const QUrl &link)
+{
+        QString configName = link.toString();
+
+        // Handle debug links
+        QRegExp re("(s|m)(0x[A-Fa-f0-9]+)");
+        if(showDebug() and configName.contains(re)) {
+                struct symbol *s;
+                struct menu *m;
+                bool ok;
+                switch(re.cap(1).toLocal8Bit()[0]) {
+                case 's':
+                        s = (struct symbol*)re.cap(2).toULong(&ok, 16);
+                        if(ok)
+                                configName = s->name;
+                        break;
+                case 'm':
+                        m = (struct menu*)re.cap(2).toULong(&ok, 16);
+                        if(ok)
+                                configName = m->sym->name;
+                        break;
+                default:
+                        return;
+                }
+        }
+
+        if (!infoWindow)
+                infoWindow = new ConfigInfoWindow(this, "infoWindow");
+
+        infoWindow->updateInfo(configName);
+        infoWindow->show();
 }
 
 ConfigSearchWindow::ConfigSearchWindow(ConfigMainWindow* parent, const char *name)

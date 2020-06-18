@@ -17,6 +17,8 @@
 #include "expr.h"
 
 class ConfigView;
+class ConfigInfoWindow;
+class ConfigInfoView;
 class ConfigList;
 class ConfigItem;
 class ConfigLineEdit;
@@ -243,6 +245,22 @@ public:
 	static QAction *showPromptAction;
 };
 
+class ConfigInfoWindow : public QDialog {
+	Q_OBJECT
+	typedef class QDialog Parent;
+public:
+	ConfigInfoWindow(ConfigInfoView* parent, const char *name = 0);
+        void updateInfo(QString configName);
+
+public slots:
+	void saveSettings(void);
+
+protected:
+	QSplitter* split;
+	ConfigView* list;
+	ConfigInfoView* info;
+};
+
 class ConfigInfoView : public QTextBrowser {
 	Q_OBJECT
 	typedef class QTextBrowser Parent;
@@ -254,12 +272,14 @@ public slots:
 	void setInfo(struct menu *menu);
 	void saveSettings(void);
 	void setShowDebug(bool);
+        void openLink(const QUrl &link);
 
 signals:
 	void showDebugChanged(bool);
 	void menuSelected(struct menu *);
 
 protected:
+        ConfigInfoWindow *infoWindow;
 	void symbolInfo(void);
 	void menuInfo(void);
 	QString debug_info(struct symbol *sym);
