@@ -1126,6 +1126,13 @@ void ConfigInfoView::menuInfo(void)
 		menu_get_ext_help(_menu, &help_gstr);
 		help = print_filter(str_get(&help_gstr));
 		str_free(&help_gstr);
+                QRegExp re("[A-Z0-9_]+ \\[");
+                for(int i = help.indexOf("Type"); (i = help.indexOf(re, i)) >= 0;) {
+                        int length = re.matchedLength()-2;
+                        help.insert(i + length, "</a>"); //4 chars
+                        help.insert(i, "<a href=\""+help.mid(i, length)+"\">"); //11 chars + length
+                      i += length*2 + 11 + 4;
+                }
 	} else if (_menu->prompt) {
 		head += "<big><b>";
 		head += print_filter(_menu->prompt->text);
