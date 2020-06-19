@@ -1393,7 +1393,7 @@ CLEAN_DIRS  += include/ksym
 CLEAN_FILES += modules.builtin modules.builtin.modinfo modules.nsdeps
 
 # Directories & files removed with 'make mrproper'
-MRPROPER_DIRS  += include/config include/generated          \
+MRPROPER_DIRS  += .config.olds include/config include/generated \
 		  arch/$(SRCARCH)/include/generated .tmp_objdiff \
 		  debian/ snap/ tar-install/
 MRPROPER_FILES += .config .config.old .version \

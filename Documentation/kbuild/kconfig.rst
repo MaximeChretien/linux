@@ -46,6 +46,12 @@ KCONFIG_OVERWRITECONFIG
 If you set KCONFIG_OVERWRITECONFIG in the environment, Kconfig will not
 break symlinks when .config is a symlink to somewhere else.
 
+KCONFIG_KEEPALLBACKUPS
+-----------------------
+If you set KCONFIG_KEEPALLBACKUPS in the environment, Kconfig will save
+all .config.old as .config.oldX where X is a number (lower is older)
+inside a folder named .config.olds .
+
 `CONFIG_`
 ---------
 If you set `CONFIG_` in the environment, Kconfig will prefix all symbols

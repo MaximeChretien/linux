@@ -923,7 +923,20 @@ next:
 			return 0;
 		}
 
-		snprintf(oldname, sizeof(oldname), "%s.old", name);
+                env = getenv("KCONFIG_KEEPALLBACKUPS");
+	        if (env) {
+                        i = 0;
+                        do {
+                                snprintf(oldname, sizeof(oldname),
+                                         "%s.olds/%s.old%d", name, name, i);
+                                i++;
+                        } while(is_present(oldname));
+
+                        if (make_parent_dir(oldname))
+                                return -1;
+                } else {
+                        snprintf(oldname, sizeof(oldname), "%s.old", name);
+                }
 		rename(name, oldname);
 		if (rename(tmpname, name))
 			return 1;
